@@ -1,0 +1,330 @@
+---
+title: "Tugas Individu Kuliah Analisis Regresi Pertemuan 7"
+author: "Nur Anggraini Fadhilah"
+date: "2024-03-05"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r}
+library(dplyr)
+library(plotly)
+library(car)
+library(randtests)
+library(lmtest)
+```
+
+```{r}
+library(readxl)
+anreg <-read_excel("D:/Kuliah/SEMESTER 4/Analisis Regresi/Tugas/Kuliah/Tugas Indiv Kuliah.xlsx")
+
+head(anreg)
+```
+
+## Model Awal
+
+```{r}
+model.reg=lm(formula= Y ~ X,data = anreg)
+summary(model.reg)
+```
+
+Diperoleh model persamaan regresi sebagai berikut
+
+*Y duga = 46.46041 − 0.7525X + e*
+
+Namun model tersebut belum bisa dipastikan sebagai model terbaik karena
+belum melalui proses uji asumsi, sehingga dibutuhkan eksplorasi kondisi
+dan pengujian asumsi Gaus Markov dan normalitas untuk mendapatkan model
+terbaik.
+
+### **Eksplorasi Kondisi**
+
+#Scatter Plot Variabel X dan Y
+
+```{r}
+plot(x = anreg$X,y = anreg$Y)
+```
+
+Hasil plot hubungan X dan Y menggambarkan hubungan yang tidak linier dan
+cenderung melengkung (tidak garis lurus) atau membentuk parabola
+
+#Plot Sisaan dan Y duga
+
+```{r}
+plot(model.reg,1)
+```
+
+#Plot Sisaan dan Urutan
+
+```{r}
+plot(x = 1:dim(anreg)[1],
+     y = model.reg$residuals,
+     type = 'b', 
+     ylab = "Residuals",
+     xlab = "Observation")
+```
+
+Tebaran membentuk pola kurva maka sisaan tidak saling bebas sehingga
+model belum baik
+
+### Normalitas Sisaan dengan QQ-Plot
+
+```{r}
+plot(model.reg,2)
+```
+
+**Uji Asumsi**
+
+1.  Kondisi Gaus Markov
+
+𝐻0: Nilai Harapan Sisaan = 0
+
+𝐻1: Nilai Harapan Sisaan ≠ 0
+
+```{r}
+t.test(model.reg$residuals,mu = 0,conf.level = 0.95)
+
+```
+
+p-value = 1 \>alpha = 0.05, maka tidak tolak h0 yang berarti nilai
+harapan sisaan sama dengan nol, asumsi terpenuhi
+
+2.  Kehomogenan
+
+𝐻0: Ragam sisaan homogen
+
+𝐻1: Ragam sisaan tidak homogen
+
+```{r}
+homogen = lm(formula = abs(model.reg$residuals) ~ X, # y: abs residual
+    data = anreg)
+summary(homogen)
+```
+
+```{r}
+bptest(model.reg)
+```
+
+```{r}
+ncvTest(model.reg)
+```
+
+karena p-value \> 0.05, maka tidak tolak h0 sehingga ragam sisaannya
+homogen, asumsi terpenuhi
+
+3.  Sisaan Saling Bebas atau tidak
+
+𝐻0: Sisaan saling bebas
+
+𝐻1: Sisaan tidak saling bebas
+
+```{r}
+library(randtests)
+runs.test(model.reg$residuals)
+```
+
+```{r}
+library(lmtest)
+dwtest(model.reg)
+```
+
+Karena p-value \< 0.05 pada Durbin-Watson Test, maka tolak H0 sehingga
+sisaan tidak saling bebas, asumsi tidak terpenuhi
+
+4.  Sisaan Menyebar Normal
+
+𝐻0: Sisaan menyebar normal
+
+𝐻1: Sisaan tidak menyebar normal
+
+```{r}
+shapiro.test(model.reg$residuals)
+```
+
+Karena p-value = 0.226 \> 0.05, maka tidak tolak H0, sehingga sisaan
+menyebar normal, asumsi terpenuhi
+
+## Penanganan kondisi tak standar
+
+1.  Transformasi Data
+
+```{r}
+Y_ubah = sqrt(anreg$Y)
+X_ubah = sqrt(anreg$X)
+
+plot(x = anreg$X, y = Y_ubah)
+```
+
+```{r}
+plot(x = X_ubah, y = anreg$Y)
+```
+
+```{r}
+plot(x = X_ubah, y = Y_ubah)
+```
+
+Karena hubungan X dan Y cenderung membentuk sebuah parabola dan nilai B1
+\< 0, maka data dapat di transformasi dengan mengecilkan X dan/atau Y
+dengan membentuknya menjadi pangkat setengah atau akar dari data asli.
+TErdapat perbedaan antara hasil plot hubungan X_ubah dengan Y, X dengan
+Y_ubah, dan X_ubah dengan Y_ubah, sehingga perlu ditelusuri lebih lanjut
+untuk memperoleh model terbaik dengan pemeriksaan asumsi pada data
+dengan sisaan paling bebas
+
+### Model dan Uji Asumsi 
+
+1.  **X_ubah dengan Y**
+
+```{r}
+model1 = lm(formula = anreg$Y ~ X_ubah)
+summary(model1)
+```
+
+Diperoleh model sebagai berikut
+
+*Y duga = 63.2250 - 7.7481x + e*
+
+Apakah sisaan saling bebas?
+
+```{r}
+dwtest(model1)
+```
+
+Karena p-value = 0.01422 \< alpha = 0.05, maka tolak H0, sehingga sisaan
+tidak saling bebas, asumsi tidak terpenuhi, maka ini bukan model terbaik
+
+2.  **X dengan Y_ubah**
+
+```{r}
+model2 = lm(formula = Y_ubah ~ anreg$X)
+summary(model2)
+```
+
+Diperoleh model sebagai berikut
+
+*Y duga = 7.015455 - 0.081045x + e*
+
+Apakah sisaan saling bebas?
+
+```{r}
+dwtest(model2)
+```
+
+Karena p-value = 0.02493 \< alpha = 0.05, maka tolak H0, sehingga sisaan
+tidak saling bebas, asumsi tidak terpenuhi, maka ini bukan model terbaik
+
+3.  **X_ubah dengan Y_ubah**
+
+```{r}
+model3 = lm(formula = Y_ubah ~ X_ubah)
+summary(model3)
+```
+
+Diperoleh model sebagai berikut
+
+*Y duga = 8.71245 - 0.81339x + e*
+
+Apakah sisaan saling bebas?
+
+```{r}
+dwtest(model3)
+```
+
+Karena p-value = 0.8629 \> alpha = 0.05 maka tidak tolak H0 sehingga
+sisaan saling bebas, asumsi terpenuhi.
+
+Selanjutnya, kita uji asumsi yang lainnya
+
+a\. Nilai Harapan Sisaan = 0
+
+```{r}
+t.test(model3$residuals,mu = 0,conf.level = 0.95)
+```
+
+Karena p-value = 0.1 \> alpha = 0.05, maka tidak tolak H0 sehingga Nilai
+Harapan Sisaan sama dengan nol, asumsi terpenuhi
+
+b\. Ragam Sisaan Homogen
+
+```{r}
+Y_ubah = sqrt(anreg$Y)
+X_ubah = sqrt(anreg$X)
+```
+
+```{r}
+model3 = lm(formula = Y_ubah ~ X_ubah)
+summary(model3)
+```
+
+```{r}
+homogen3 = lm(formula = abs(model3$residuals) ~ X_ubah, 
+    data = anreg)
+summary(homogen)
+```
+
+```{r}
+bptest(model3)
+```
+
+```{r}
+ncvTest(model3)
+```
+
+Karena p-value \> 0.05, maka tidak tolak H0 sehingga ragam sisaan
+homogen, asumsi terpenuhi
+
+c\. Sisaan Menyebar Normal
+
+```{r}
+shapiro.test(model3$residuals)
+```
+
+Karena p-value = 0.7791 \> alpha = 0.05 maka tidak tolak H0 sehingga
+sisaan menyebar normal, asumsi terpenuhi
+
+## Kesimpulan
+
+```{r}
+plot(x = X_ubah, y = Y_ubah)
+```
+
+```{r}
+model3 = lm(formula = Y_ubah ~ X_ubah)
+summary(model3)
+```
+
+Hasil visualisasi analisi data dengan scatter plot dapat diketahui bahwa
+ada hubungan linear yang negatif antara variabel penjelas X_ubah dengan
+variabel Y_ubah. Hal ini mengindikasikan bahwa ketika unsur variabel
+X_ubah mengalami kenaikan akan menghasilkan penuruan nilai pada variabel
+Y_ubah.
+
+Berdasarkan hasil analisis regresi linear sederhana setelah
+transformasi, diketahui bahwa nilai Adjusted R-Squared sebesar 0.9755
+atau sebanyak 97,55% keragaman yang terdapat pada variabel Y_ubah dapat
+dijelaskan oleh variabel penjelas X_ubah dan memiliki sisa yaitu 2,45%
+dijelaskan oleh faktor lain yang tidak terdapat pada model
+
+Adapun nilai korelasinya didapat dengan menghitung akar dari nilai
+determinasi (0.9772) yaitu 0.9885, nilai ini sangat mendekati nilai 1,
+sehingga dapat dikatakan terdapat korelasi yang sangat kuat antara
+peubah X dan Y
+
+Model regresi didapat sebagai berikut
+
+*Y duga = 8.71245 - 0.81339x + e*
+
+Nilai koefisien B1 sebesar -0.81339 menunjukkan bahwa kenaikan setiap
+satu satuan pada variabel x diduga berpengaruh terhadap penurunan
+rata-rata pada variabel y sebesar 0.81339. Koefisien B0 (intersep)
+sebesar 8.71245 menunjukkan perkiraan rata-rata variabel y ketika nilai
+variabel x tidak ada, disebabkan oleh faktor-faktor lain yang tidak
+termasuk kedalam model. Dengan kata lain, terdapat nilai rata-rata y
+tertentu yang tidak dapat dijelaskan oleh variabel x.
+
+Nilai p-value koefisien intersep sebesar 9.83e-16 \< alpha = 0.05, maka
+tolak H0, yaitu ada signifikansi. Terdapat cukup bukti untuk menyatakan
+bahwa terdapat nilai variabel y yang tidak tidak dapat dijelaskan oleh
+variabel penjelas x pada tingkat kepercayaan 95%
